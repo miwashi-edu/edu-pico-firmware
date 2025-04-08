@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.12)
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+project(pico_firmware C CXX ASM)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+
+if (PICO_SDK_VERSION_STRING VERSION_LESS "2.1.0")
+    message(FATAL_ERROR "Raspberry Pi Pico SDK version 2.1.0 (or later) required. Your version is ")
+endif()
+
+if (NOT DEFINED PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS)
+    set(PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS 3000)
+endif()
+
+pico_sdk_init()
+
+function(add_subdirectory_exclude_platforms NAME)
+    if (ARGN)
+        if (PICO_PLATFORM IN_LIST ARGN)
+            message("Skipping  example which is unsupported on this platform")
+            return()
+        endif()
+        foreach(PATTERN IN LISTS ARGN)
+            string(REGEX MATCH "${PATTERN}" MATCHED "")
+            string(REGEX MATCH "${PATTERN}" MATCHED "")
+            if (MATCHED)
+                message("Skipping ${NAME} example which is unsupported on this platform")
+                return()
+            endif()
+        endforeach()
+    endif()
+    add_subdirectory(${NAME})
+endfunction()
+
+
+add_subdirectory_exclude_platforms(blink)
