@@ -37,6 +37,9 @@ jobs:
     - name: List built files
       run: ls -l build || true
 
+    - name: List built files in bin
+      run: ls -l bin || true
+
     - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -44,3 +47,5 @@ jobs:
         path:
           bin/*.elf
           bin/*.uf2
+          build/*.elf
+          build/*.uf2
