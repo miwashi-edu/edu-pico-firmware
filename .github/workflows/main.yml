@@ -1,0 +1,38 @@
+name: Build Pico Firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential gcc-arm-none-eabi \
+          libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+    - name: Fetch pico-sdk
+      run: |
+        git clone https://github.com/raspberrypi/pico-sdk.git
+        cd pico-sdk
+        git checkout 2.1.1
+        git submodule update --init
+        echo "PICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk" >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: cmake -B build -DPICO_SDK_PATH=$PICO_SDK_PATH
+
+    - name: Build project
+      run: cmake --build build
+
+    - name: List built files
+      run: ls -l build || true
