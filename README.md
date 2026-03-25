@@ -50,6 +50,7 @@ cd pico
 ```bash
 mkdir blink && cd blink
 mkdir src
+mkdir cmake
 ```
 
 ## CMakeLists.txt
@@ -58,7 +59,12 @@ mkdir src
 cat > CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.13)
 
-include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+set(APP blink)
+set(CMAKE_EXECUTABLE_SUFFIX ".elf" CACHE STRING "" FORCE)
+set(PICO_BOARD pico2_w CACHE STRING "Target board")
+set(PICO_PLATFORM rp2350-arm-s CACHE STRING "Target platform")
+
+include(cmake/pico_sdk.cmake)
 
 project(blink C CXX ASM)
 set(CMAKE_C_STANDARD 11)
@@ -68,9 +74,29 @@ pico_sdk_init()
 
 add_executable(blink src/blink.c)
 
-target_link_libraries(blink pico_stdlib)
+target_link_libraries(\${APP} pico_stdlib pico_cyw43_arch_none)
 
-pico_add_extra_outputs(blink)
+pico_add_extra_outputs(\${APP})
+
+install(FILES \${CMAKE_CURRENT_BINARY_DIR}/\${APP}.uf2 DESTINATION /firmware)
+EOF
+```
+
+## ./src/pico_sdk.cmake
+
+```bash
+cat > ./cmake/pico_sdk.cmake << 'EOF'
+include(FetchContent)
+
+FetchContent_Declare(
+    pico-sdk
+    GIT_REPOSITORY https://github.com/raspberrypi/pico-sdk.git
+    GIT_TAG        2.2.0
+)
+FetchContent_MakeAvailable(pico-sdk)
+
+set(PICO_SDK_PATH ${pico-sdk_SOURCE_DIR})
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 EOF
 ```
 
