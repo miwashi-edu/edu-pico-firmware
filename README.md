@@ -74,11 +74,11 @@ pico_sdk_init()
 
 add_executable(blink src/blink.c)
 
-target_link_libraries(\${APP} pico_stdlib pico_cyw43_arch_none)
+target_link_libraries(${APP} pico_stdlib pico_cyw43_arch_none)
 
-pico_add_extra_outputs(\${APP})
+pico_add_extra_outputs(${APP})
 
-install(FILES \${CMAKE_CURRENT_BINARY_DIR}/\${APP}.uf2 DESTINATION /firmware)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${APP}.uf2 DESTINATION /firmware)
 EOF
 ```
 
