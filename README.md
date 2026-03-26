@@ -105,7 +105,7 @@ cd blink
 rm -rf build
 cmake -B build
 cmake --build build
-cmake --install build # Copies .elf to your host computer
+cmake --install build # Copies .uf2 to your host computer
 ```
 
 > Go to your host compter the project that has the Dockerfile, and look for
