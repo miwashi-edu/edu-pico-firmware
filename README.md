@@ -117,7 +117,7 @@ cmake --build build
 cmake --install build # Copies .elf to your host computer
 ```
 
-> Go to your host compter the project that has the Dockderfile, and look for
+> Go to your host compter the project that has the Dockerfile, and look for
 > firware directory, copy the .elf file to your pico.
 
 
