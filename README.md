@@ -52,8 +52,15 @@ mkdir blink && cd blink
 mkdir src
 mkdir cmake
 ```
+
+```bash
+cd ~
+cd ws
+git clone https://github.com/raspberrypi/pico-sdk.git # PICO_SDK_PATH is set to /~/ws/pico-sdk
 cd ~/ws/pico-sdk
 git submodule update --init lib/cyw43-driver
+```
+
 
 ## CMakeLists.txt
 
