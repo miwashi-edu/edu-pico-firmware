@@ -15,9 +15,6 @@ sudo apt update && sudo apt upgrade -y
 ```bash
 git config --global user.name "Your Name"
 git config --global user.email "your@email.com"
-
-git config --global user.name "Mikael Wallin"
-git config --global user.email "mikael.x.wallin@gmail.com"
 ```
 
 ## Add software
