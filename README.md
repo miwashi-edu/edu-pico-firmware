@@ -2,7 +2,7 @@
 
 ## Instructions
 
-## Blink Firmware
+### Blink Firmware
 
 ```bash
 cd ~
@@ -12,7 +12,7 @@ mkdir blink
 mkdir ./blink{src,include,cmake}
 ```
 
-## ./CMakeLists.txt
+### ./CMakeLists.txt
 
 ```bash
 cat > CMakeLists.txt << 'EOF'
@@ -33,7 +33,7 @@ add_subdirectory(blink)
 EOF
 ```
 
-## ./blink/CMakeLists.txt
+### ./blink/CMakeLists.txt
 
 ```bash
 cat > ./blink/CMakeLists.txt << 'EOF'
@@ -56,7 +56,7 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.uf2 DESTINATION /firmw
 EOF
 ```
 
-## ./blink/src/blink.c
+### ./blink/src/blink.c
 
 ```bash
 curl https://raw.githubusercontent.com/raspberrypi/pico-examples/refs/heads/master/blink/blink.c -o ./blink/src/blink.c
