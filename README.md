@@ -3,59 +3,27 @@
 ## Prepare
 
 ```bash
-git clone https://github.com/miwashi-edu/edu-pico-firmware.git
-cd edu-pico-firmware
-docker compose up -d
-ssh -p 2227 dev@localhost # password dev
-sudo apt update && sudo apt upgrade -y
-```
-
-## Configure Git
-
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your@email.com"
-git config --global credential.helper store
-```
-
-## Add software
-
-### Development Environment
-
-```bash
-sudo apt install build-essential -y # GCC, G++, make, and libc development headers
-sudo apt install gcc-arm-none-eabi -y # ARM Cross-compiler.
-sudo apt install libnewlib-arm-none-eabi -y # Std C-library.
-sudo apt install libstdc++-arm-none-eabi-newlib -y  Std C++-library.
-sudo apt install cmake -y
+cd ~
+cd ws
+cd pico
+git add .
+git commit -m "level-1"
+git push
 ```
 
 ## Instructions
 
-
-### Pico-SDK
-
-```bash
-cd ~
-mkdir ws
-cd ws
-git clone https://github.com/raspberrypi/pico-sdk.git # PICO_SDK_PATH is set to /~/ws/pico-sdk
-cd ~/ws/pico-sdk
-cd pico-sdk
-git submodule update --init --recursive
-```
-
-> Create an empty project on github with name `pico`
-> Add `README`, and `.gitignore` for `C`.
+### Log Firmware
 
 ```bash
 cd ~
 cd ws
-git clone https://github.com/[GITHUB-USER]/pico.git
 cd pico
+mkdir log
+mkdir ./log{src,include,cmake}
 ```
 
-## CMakeLists.txt
+### ./CMakeLists.txt
 
 ```bash
 cat > CMakeLists.txt << 'EOF'
@@ -71,15 +39,86 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
+
+add_subdirectory(blink)
+add_subdirectory(log)
 EOF
 ```
 
-## Commit it
+### ./blink/CMakeLists.txt
 
 ```bash
-git add .
-git commit -m "Initial Commit"
-git push # We cloned from github
+cat > ./blink/CMakeLists.txt << 'EOF'
+cmake_minimum_required(VERSION 3.12)
+set(PICO_BOARD pico2_w CACHE STRING "Target board")
+set(PICO_PLATFORM rp2350-arm-s CACHE STRING "Target platform")
+# MUST be before project()
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+project(blink C CXX ASM)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+pico_sdk_init()
+add_executable(${PROJECT_NAME} src/blink.c)
+target_link_libraries(${PROJECT_NAME} pico_stdlib)
+if (PICO_CYW43_SUPPORTED)
+    target_link_libraries(${PROJECT_NAME} pico_cyw43_arch_none)
+endif()
+pico_add_extra_outputs(${PROJECT_NAME})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.uf2 DESTINATION /firmware)
+EOF
 ```
+
+### ./log/src/log.c
+
+```bash
+cat > ./log/src/log.c << 'EOF'
+#include "pico/stdlib.h"
+#include <stdio.h>
+
+#ifndef LOG_DELAY_MS
+#define LOG_DELAY_MS 250
+#endif
+
+
+int main() {
+    stdio_init_all();
+    printf("Starting...\n");
+    while (true) {
+        printf("LED state: %d\n", true);
+        sleep_ms(LOG_DELAY_MS);
+        printf("LED state: %d\n", false);
+        sleep_ms(LOG_DELAY_MS);
+    }
+}
+EOF
+```
+
+## Try it
+
+```bash
+cd ~
+cd ws
+cd pico
+rm -rf build
+cmake -B build
+cmake --build build
+cmake --install build # Copies .uf2 to your host computer
+```
+
+> Go to your host compter the project that has the Dockerfile, and look for
+> firware directory, copy the .u2f file to your pico.
+
+
+## Do Over
+
+```bash
+cd ~
+cd ws
+cd pico
+git reset --hard
+git clean -df
+```
+
+
 
 
