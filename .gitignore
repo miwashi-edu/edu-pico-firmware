@@ -1,5 +1,6 @@
+firmware/
 cmake-build-debug/
-
+.cache/
 .idea/
 
 bin/

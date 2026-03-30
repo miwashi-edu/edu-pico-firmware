@@ -1,0 +1,16 @@
+services:
+  pico-dev:
+    build: .
+    container_name: pico-dev
+    hostname: pico-dev
+    ports:
+      - "2227:22"         # SSH: connect with  ssh dev@localhost -p 2227
+    volumes:
+      - ./firmware:/firmware   # Drop your .uf2 files here from the host
+    networks:
+      - iotnet
+    restart: unless-stopped
+
+networks:
+  iotnet:
+    external: true          # Expects the network to already exist on the host
