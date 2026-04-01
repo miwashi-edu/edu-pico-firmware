@@ -20,7 +20,7 @@ cd ~
 cd ws
 cd pico
 mkdir interrupt
-mkdir ./interrupt{src,include,cmake}
+mkdir ./interrupt/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
