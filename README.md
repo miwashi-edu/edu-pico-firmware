@@ -22,7 +22,7 @@ cd ~
 cd ws
 cd pico
 mkdir btn
-mkdir ./btn{src,include,cmake}
+mkdir ./btn/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
