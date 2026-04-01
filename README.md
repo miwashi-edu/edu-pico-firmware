@@ -9,7 +9,7 @@ cd ~
 cd ws
 cd pico
 mkdir blink
-mkdir ./blink{src,include,cmake}
+mkdir ./blink/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
