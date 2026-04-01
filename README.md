@@ -20,7 +20,7 @@ cd ~
 cd ws
 cd pico
 mkdir watchdog
-mkdir ./watchdog{src,include,cmake}
+mkdir ./watchdog/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
