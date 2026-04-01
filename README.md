@@ -22,7 +22,7 @@ cd ~
 cd ws
 cd pico
 mkdir wifi
-mkdir ./wifi{src,include,cmake}
+mkdir ./wifi/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
@@ -90,7 +90,7 @@ EOF
 ### ./wifi/src/wifi.c
 
 ```bash
-cat > ./btn/src/btn.c << 'EOF'
+cat > ./wifi/src/wifi.c << 'EOF'
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
