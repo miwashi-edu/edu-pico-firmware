@@ -20,7 +20,7 @@ cd ~
 cd ws
 cd pico
 mkdir log
-mkdir ./log{src,include,cmake}
+mkdir ./log/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
