@@ -7,22 +7,20 @@ cd ~
 cd ws
 cd pico
 git add .
-git commit -m "level-4"
+git commit -m "level-6"
 git push
-export WIFI_SSID=[NAME OF YOUR SSID]
-export WIFI_PASSWORD=[YOUT SSID PASSWORD]
 ```
 
 ## Instructions
 
-### Wifi Firmware
+### Queue Firmware
 
 ```bash
 cd ~
 cd ws
 cd pico
-mkdir wifi
-mkdir ./wifi{src,include,cmake}
+mkdir queue
+mkdir ./queue/{src,include,cmake}
 ```
 
 ### ./CMakeLists.txt
@@ -52,140 +50,128 @@ add_subdirectory(queue)
 EOF
 ```
 
-### ./wifi/CMakeLists.txt
+### ./queue/CMakeLists.txt
 
 ```bash
-cat > ./wifi/CMakeLists.txt << 'EOF'
+cat > ./queue/CMakeLists.txt << 'EOF'
 cmake_minimum_required(VERSION 3.12)
 
-set(PICO_BOARD pico2_w CACHE STRING "Target board")
-set(PICO_PLATFORM rp2350-arm-s CACHE STRING "Target platform")
-
-include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-
-project(wifi C CXX ASM)
+project(queue C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
-add_executable(${PROJECT_NAME} src/wifi.c)
-pico_enable_stdio_usb(${PROJECT_NAME} 1)
+add_executable(${PROJECT_NAME} src/queue.c)
+pico_enable_stdio_usb(${PROJECT_NAME}  1)
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-        WIFI_SSID="$ENV{WIFI_SSID}"
-        WIFI_PASSWORD="$ENV{WIFI_PASSWORD}"
-)
-
-target_link_libraries(${PROJECT_NAME}
-        pico_stdlib
-        pico_cyw43_arch_lwip_poll
-        hardware_irq
-)
+target_link_libraries(${PROJECT_NAME} pico_stdlib)
 pico_add_extra_outputs(${PROJECT_NAME})
+
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.uf2 DESTINATION /firmware)
+
 EOF
 ```
 
-### ./wifi/src/wifi.c
+### ./queue/src/queue.c
 
 ```bash
-cat > ./btn/src/btn.c << 'EOF'
+cat > ./queue/src/queue.c << 'EOF'
 #include "pico/stdlib.h"
-#include "pico/cyw43_arch.h"
-#include "lwip/tcp.h"
-#include "lwip/dns.h"
+#include "pico/util/queue.h"
 #include <stdio.h>
-#include <string.h>
 
-#define BUTTON_PIN  15
-#define SERVER_HOST "192.168.1.135"
-#define SERVER_PORT 8080
-#define SERVER_PATH "/endpoint"
+#define BTN_A_PIN 14
+#define BTN_B_PIN 15
+#define BTN_RESET_PIN 16
 
-static volatile bool button_pressed = false;
+#define DELAY_MS 250
+#define STARTUP_DELAY_MS 2000
 
-void button_callback(uint gpio, uint32_t events) {
-    printf("Button Pressed\n");
-    button_pressed = true;
+#define NUMER_OF_Q_ELEMENTS 16
+
+volatile uint32_t counter = 0;
+// Queue for events
+queue_t q;
+
+typedef struct {
+    uint gpio;
+    uint32_t events;
+} event_t;
+
+void slow_process(uint gpio) {
+    printf("Start %d from GPIO %d\n", counter++, gpio);
+
+    printf("Step A\n"); sleep_ms(DELAY_MS);
+    printf("Step B\n"); sleep_ms(DELAY_MS);
+    printf("Step C\n"); sleep_ms(DELAY_MS);
+    printf("Step D\n"); sleep_ms(DELAY_MS);
+
+    printf("Done\n");
 }
 
-void get_mac_string(char *buf) {
-    uint8_t mac[6];
-    cyw43_wifi_get_mac(&cyw43_state, CYW43_ITF_STA, mac);
-    snprintf(buf, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
-void send_http_post(const char *mac) {
-    char body[64];
-    snprintf(body, sizeof(body), "{\"id\": \"%s\"}", mac);
-
-    char request[256];
-    snprintf(request, sizeof(request),
-        "POST %s HTTP/1.1\r\n"
-        "Host: %s\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %d\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "%s",
-        SERVER_PATH, SERVER_HOST, (int)strlen(body), body);
-
-    struct tcp_pcb *pcb = tcp_new();
-    ip_addr_t server_ip;
-
-    if (dns_gethostbyname(SERVER_HOST, &server_ip, NULL, NULL) == ERR_OK) {
-        printf("Sending");
-        tcp_connect(pcb, &server_ip, SERVER_PORT, NULL);
-        tcp_write(pcb, request, strlen(request), TCP_WRITE_FLAG_COPY);
-        tcp_output(pcb);
+void gpio_isr(uint gpio, uint32_t events) {
+    if (gpio == BTN_RESET_PIN) {
+        printf("Resetting counter\n");
+        counter = 0;
+        printf("Counter reset\n");
+        return;
     }
+    printf("GPIO %d pressed\n", gpio);
+    event_t e = {
+        .gpio = gpio,
+        .events = events
+    };
+    queue_try_add(&q, &e);
+}
+
+// --------------------
+// Init helpers
+// --------------------
+void init_btn(int pin) {
+    printf("Initializing GPIO %d\n", pin);
+    gpio_init(pin);
+    gpio_set_dir(pin, GPIO_IN);
+    gpio_pull_up(pin);
+}
+
+void init_all() {
+    printf("Initializing system\n");
+
+    queue_init(&q, sizeof(event_t), NUMER_OF_Q_ELEMENTS);
+
+    init_btn(BTN_A_PIN);
+    init_btn(BTN_B_PIN);
+    init_btn(BTN_RESET_PIN);
+
+    gpio_set_irq_enabled_with_callback(BTN_A_PIN,GPIO_IRQ_EDGE_FALL,true,&gpio_isr);
+    gpio_set_irq_enabled_with_callback(BTN_B_PIN,GPIO_IRQ_EDGE_FALL,true,&gpio_isr);
+    gpio_set_irq_enabled_with_callback(BTN_RESET_PIN,GPIO_IRQ_EDGE_FALL,true,&gpio_isr);
 }
 
 int main() {
     stdio_init_all();
+    sleep_ms(STARTUP_DELAY_MS);
 
-    if (cyw43_arch_init_with_country(CYW43_COUNTRY_SWEDEN)) {
-        printf("WiFi init failed\n");
-        return 1;
-    }
+    init_all();
 
-    cyw43_arch_enable_sta_mode();
-    printf("Connecting to WiFi...\n");
-
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("WiFi connection failed\n");
-        printf("ssid %s \n",WIFI_SSID);
-        printf("psk %s \n",WIFI_PASSWORD);
-        return 1;
-    }
-    printf("Connected!\n");
-
-    // Print assigned IP address
-    uint8_t *ip = (uint8_t *)&cyw43_state.netif[CYW43_ITF_STA].ip_addr.addr;
-    printf("IP: %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
-
-    gpio_init(BUTTON_PIN);
-    gpio_set_dir(BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON_PIN);
-    gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_FALL, true, &button_callback);
-
-    char mac[18];
-    get_mac_string(mac);
-    printf("MAC: %s\n", mac);
-    printf("Ready — press button to send POST\n");
-
-    while (true) {
-        if (button_pressed) {
-            button_pressed = false;
-            printf("Sending POST...\n");
-            send_http_post(mac);
+    while (1) {
+        event_t e;
+        if (queue_try_remove(&q, &e)) {
+            switch (e.gpio) {
+            case BTN_A_PIN:
+                printf("GPIO %d handled\n", e.gpio);
+                slow_process(e.gpio);
+                break;
+            case BTN_B_PIN:
+                printf("GPIO %d handled\n", e.gpio);
+                slow_process(e.gpio);
+                break;
+            default:
+                break;
+            }
         }
-        cyw43_arch_poll();
-        sleep_ms(10);
+        tight_loop_contents();
     }
 }
 EOF
