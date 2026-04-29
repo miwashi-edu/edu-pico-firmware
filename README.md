@@ -3,59 +3,27 @@
 ## Prepare
 
 ```bash
-git clone https://github.com/miwashi-edu/edu-pico-firmware.git
-cd edu-pico-firmware
-docker compose up -d
-ssh -p 2227 dev@localhost # password dev
-sudo apt update && sudo apt upgrade -y
-```
-
-## Configure Git
-
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your@email.com"
-git config --global credential.helper store
-```
-
-## Add software
-
-### Development Environment
-
-```bash
-sudo apt install build-essential -y # GCC, G++, make, and libc development headers
-sudo apt install gcc-arm-none-eabi -y # ARM Cross-compiler.
-sudo apt install libnewlib-arm-none-eabi -y # Std C-library.
-sudo apt install libstdc++-arm-none-eabi-newlib -y  Std C++-library.
-sudo apt install cmake -y
+cd ~
+cd ws
+cd pico
+git add .
+git commit -m "level-7"
+git push
 ```
 
 ## Instructions
 
-
-### Pico-SDK
-
-```bash
-cd ~
-mkdir ws
-cd ws
-git clone https://github.com/raspberrypi/pico-sdk.git # PICO_SDK_PATH is set to /~/ws/pico-sdk
-cd ~/ws/pico-sdk
-cd pico-sdk
-git submodule update --init --recursive
-```
-
-> Create an empty project on github with name `pico`
-> Add `README`, and `.gitignore` for `C`.
+### Queue Firmware
 
 ```bash
 cd ~
 cd ws
-git clone https://github.com/[GITHUB-USER]/pico.git
 cd pico
+mkdir stoplight
+mkdir ./stoplight/{src,include,cmake}
 ```
 
-## CMakeLists.txt
+### ./CMakeLists.txt
 
 ```bash
 cat > CMakeLists.txt << 'EOF'
@@ -71,15 +39,178 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
+
+add_subdirectory(blink)
+add_subdirectory(log)
+add_subdirectory(btn)
+add_subdirectory(interrupt)
+add_subdirectory(wifi)
+add_subdirectory(watchdog)
+add_subdirectory(queue)
+add_subdirectory(stoplight)
 EOF
 ```
 
-## Commit it
+### ./stoplight/CMakeLists.txt
 
 ```bash
-git add .
-git commit -m "Initial Commit"
-git push # We cloned from github
+cat > ./stoplight/CMakeLists.txt << 'EOF'
+cmake_minimum_required(VERSION 3.12)
+
+include(FetchContent)
+FetchContent_Declare(
+        tinyfsm
+        GIT_REPOSITORY https://github.com/digint/tinyfsm.git
+        GIT_TAG        master
+)
+FetchContent_MakeAvailable(tinyfsm)
+
+add_executable(stoplight
+        src/main.cpp
+)
+
+target_include_directories(stoplight PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${tinyfsm_SOURCE_DIR}/include
+)
+
+target_link_libraries(stoplight
+        pico_stdlib
+        hardware_gpio
+        hardware_timer
+)
+
+pico_add_extra_outputs(stoplight)
+
+pico_enable_stdio_usb(stoplight 1)
+pico_enable_stdio_uart(stoplight 0)
+EOF
 ```
+
+### ./stoplight/src/main.cpp
+
+```bash
+cat > ./stoplight/src/main.cpp << 'EOF'
+#include "stoplight.hpp"
+#include "pico/stdlib.h"
+
+static void set_lights(bool red, bool yellow, bool green) {
+    gpio_put(RED_PIN,    red);
+    gpio_put(YELLOW_PIN, yellow);
+    gpio_put(GREEN_PIN,  green);
+}
+
+// Red
+void Red::entry() { set_lights(1, 0, 0); }
+void Red::react(TimerExpired const &) { transit<Green>(); }
+
+// Green
+void Green::entry() { set_lights(0, 0, 1); }
+void Green::react(TimerExpired const &) { transit<Yellow>(); }
+
+// Yellow
+void Yellow::entry() { set_lights(0, 1, 0); }
+void Yellow::react(TimerExpired const &) { transit<Red>(); }
+
+int main() {
+    stdio_init_all();
+
+    gpio_init(RED_PIN);    gpio_set_dir(RED_PIN,    GPIO_OUT);
+    gpio_init(YELLOW_PIN); gpio_set_dir(YELLOW_PIN, GPIO_OUT);
+    gpio_init(GREEN_PIN);  gpio_set_dir(GREEN_PIN,  GPIO_OUT);
+
+    Stoplight::start();
+
+    const uint durations[] = { RED_DURATION_MS, GREEN_DURATION_MS, YELLOW_DURATION_MS };
+    uint step = 0;
+
+    while (true) {
+        sleep_ms(durations[step % 3]);
+        Stoplight::dispatch(TimerExpired());
+        step++;
+    }
+}
+EOF
+```
+
+
+### ./stoplight/include/stoplight.hpp
+
+```bash
+cat > ./stoplight/include/stoplight.hpp << 'EOF'
+#pragma once
+
+#include <tinyfsm.hpp>
+#include "hardware/gpio.h"
+
+constexpr uint RED_PIN    = 16;
+constexpr uint YELLOW_PIN = 17;
+constexpr uint GREEN_PIN  = 18;
+
+constexpr uint RED_DURATION_MS    = 5000;
+constexpr uint GREEN_DURATION_MS  = 4000;
+constexpr uint YELLOW_DURATION_MS = 1000;
+
+// Events
+struct TimerExpired : tinyfsm::Event {};
+
+// Forward declarations
+struct Red;
+struct Yellow;
+struct Green;
+
+// Base state
+struct Stoplight : tinyfsm::Fsm<Stoplight> {
+    virtual void react(TimerExpired const &) {}
+    virtual void entry() {}
+    virtual void exit()  {}
+};
+
+struct Red : Stoplight {
+    void entry() override;
+    void react(TimerExpired const &) override;
+};
+
+struct Green : Stoplight {
+    void entry() override;
+    void react(TimerExpired const &) override;
+};
+
+struct Yellow : Stoplight {
+    void entry() override;
+    void react(TimerExpired const &) override;
+};
+
+FSM_INITIAL_STATE(Stoplight, Red)
+EOF
+```
+
+## Try it
+
+```bash
+cd ~
+cd ws
+cd pico
+rm -rf build
+cmake -B build
+cmake --build build
+cmake --install build # Copies .uf2 to your host computer
+```
+
+> Go to your host compter the project that has the Dockerfile, and look for
+> firware directory, copy the .u2f file to your pico.
+>
+
+## Do Over
+
+```bash
+cd ~
+cd ws
+cd pico
+git reset --hard
+git clean -df
+```
+
+
 
 
